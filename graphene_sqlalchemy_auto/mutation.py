@@ -21,7 +21,9 @@ def input_to_dictionary(input):
         # Convert GraphQL global id to database id
         if input[key] is None:
             continue
-        if key[-2:] == "id" and input[key] and not input[key].isdigit():
+           
+        # handle primary & foreign keys
+        if key in ["id","document_id", "documentId"] and input[key] and not input[key].isdigit():
             input[key] = from_global_id(input[key])[1]
         if isinstance(input[key], (dict,)):
             input[key] = input_to_dictionary(input[key])
@@ -85,9 +87,9 @@ class SQLAlchemyMutation(graphene.Mutation):
                 arguments["input"] = graphene.Argument.mounted(input_type(required=True))
             else:
                 _out_name = "Delete"
-        cls.output = graphene.Field(lambda: SQLAlchemyObjectTypes().get(model), description="输出")
-        cls.ok = graphene.Boolean(description="成功？")
-        cls.message = graphene.String(description="更多信息")
+        cls.output = graphene.Field(lambda: SQLAlchemyObjectTypes().get(model), description="Output")
+        cls.ok = graphene.Boolean(description="success？")
+        cls.message = graphene.String(description="More info")
         super(SQLAlchemyMutation, cls).__init_subclass_with_meta__(
             _meta=meta, arguments=arguments, **options
         )
@@ -105,7 +107,7 @@ class SQLAlchemyMutation(graphene.Mutation):
         else:  # update data
             model = session.query(meta.model).filter(meta.model.id == kwargs["id"]).first()
             if not model:
-                return cls(output=None, ok=False, message="要操作的数据不存在")
+                return cls(output=None, ok=False, message="Data does not exist")
         if meta.delete:  # delete data
             session.delete(model)
         else:
@@ -130,10 +132,10 @@ class SQLAlchemyMutation(graphene.Mutation):
         try:
             session.commit()
         except SQLAlchemyError as e:
-            return cls(output=None, ok=False, message="数据库操作报错：%s" % e.args[0])
+            return cls(output=None, ok=False, message="DB Error：%s" % e.args[0])
         except Exception as e:
-            return cls(output=None, ok=False, message="数据库操作报错：%s" % e.__str__())
-        return cls(output=model, ok=True, message="操作成功")
+            return cls(output=None, ok=False, message="DB Error：%s" % e.__str__())
+        return cls(output=model, ok=True, message="Operation successful")
 
     @classmethod
     def Field(cls, *args, **kwargs):
